@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>なんでも日記 ― プロトタイプ</title>
+<style>
+  :root{
+    --paper:#f7f1e3;
+    --paper-dark:#efe5cf;
+    --ink:#3a3226;
+    --ink-soft:#6b5f4c;
+    --accent:#b3543f;
+    --accent-soft:#e8c9a0;
+    --card:#fffdf6;
+    --line:#d8cbae;
+    --shadow:0 2px 8px rgba(80,60,20,.12);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic",sans-serif;
+    line-height:1.7;
+    padding-bottom:48px;
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+
+  /* ヘッダー */
+  header{
+    padding:22px 0 6px;
+    text-align:center;
+    position:relative;
+  }
+  header h1{
+    font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho",serif;
+    font-size:30px;
+    letter-spacing:.14em;
+    margin:0;
+    font-weight:600;
+  }
+  header .tagline{
+    color:var(--ink-soft);
+    font-size:13px;
+    margin-top:4px;
+  }
+  .proto-badge{
+    display:inline-block;
+    margin-top:10px;
+    padding:2px 12px;
+    border:1.5px dashed var(--accent);
+    color:var(--accent);
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.08em;
+    background:#fff8ee;
+  }
+  .mode-line{
+    margin-top:8px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .mode-line .dot{
+    display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:#c9a227;margin-right:5px;vertical-align:1px;
+  }
+  .mode-line.live .dot{background:#4c9a52;}
+  #settingsBtn{
+    position:absolute;top:20px;right:2px;
+    background:none;border:none;font-size:22px;cursor:pointer;
+    padding:6px;color:var(--ink-soft);
+  }
+
+  /* セクション */
+  section{margin-top:26px;}
+  h2{
+    font-size:15px;
+    letter-spacing:.06em;
+    margin:0 0 10px;
+    display:flex;align-items:center;gap:8px;
+  }
+  h2 .num{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:22px;height:22px;border-radius:50%;
+    background:var(--accent);color:#fff;font-size:13px;flex:none;
+  }
+  .hint{font-size:12px;color:var(--ink-soft);margin:2px 0 10px;}
+
+  /* サンプル題材 */
+  .sample-grid{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:10px;
+  }
+  .sample-card{
+    background:var(--card);
+    border:2px solid var(--line);
+    border-radius:14px;
+    padding:14px 10px 12px;
+    text-align:center;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+    transition:border-color .15s, transform .1s;
+  }
+  .sample-card:active{transform:scale(.98);}
+  .sample-card .emoji{font-size:38px;display:block;line-height:1.2;}
+  .sample-card .sname{font-size:14px;font-weight:700;margin-top:4px;}
+  .sample-card .ssub{font-size:11px;color:var(--ink-soft);}
+  .sample-card.selected{border-color:var(--accent);background:#fdf3e3;}
+
+  /* アップロード */
+  .upload-box{
+    margin-top:12px;
+    background:var(--card);
+    border:2px dashed var(--line);
+    border-radius:14px;
+    padding:16px;
+    text-align:center;
+    cursor:pointer;
+  }
+  .upload-box.selected{border-color:var(--accent);border-style:solid;background:#fdf3e3;}
+  .upload-box .u-emoji{font-size:30px;}
+  .upload-box .u-text{font-size:13px;color:var(--ink-soft);margin-top:2px;}
+  #previewImg{
+    display:none;
+    max-width:100%;max-height:240px;
+    border-radius:10px;margin:10px auto 4px;
+    box-shadow:var(--shadow);
+  }
+  #fileInput{display:none;}
+
+  /* ボタン */
+  #writeBtn{
+    display:block;width:100%;
+    margin-top:22px;
+    padding:16px;
+    font-size:17px;font-weight:700;letter-spacing:.1em;
+    color:#fff;background:var(--accent);
+    border:none;border-radius:999px;
+    box-shadow:0 4px 12px rgba(179,84,63,.35);
+    cursor:pointer;
+  }
+  #writeBtn:disabled{background:#c9bda6;box-shadow:none;cursor:not-allowed;}
+  #writeBtn:active:not(:disabled){transform:scale(.99);}
+
+  /* 結果 */
+  #resultArea{display:none;margin-top:26px;}
+  .diary-paper{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:6px;
+    box-shadow:var(--shadow);
+    padding:22px 20px 18px;
+    background-image:repeating-linear-gradient(transparent,transparent 31px,rgba(120,100,60,.07) 32px);
+  }
+  .diary-meta{
+    display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px solid var(--line);
+    padding-bottom:8px;margin-bottom:12px;
+  }
+  .diary-subject{
+    font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+    font-size:18px;font-weight:600;
+  }
+  .diary-date{font-size:12px;color:var(--ink-soft);}
+  #diaryText{
+    font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho",serif;
+    font-size:16px;line-height:2.0;letter-spacing:.02em;
+    white-space:pre-wrap;word-break:break-all;
+    margin:0;
+  }
+  .diary-foot{
+    margin-top:12px;font-size:11px;color:var(--ink-soft);
+    display:flex;justify-content:space-between;
+  }
+  .source-tag{
+    display:inline-block;padding:0 8px;border-radius:999px;
+    background:var(--paper-dark);font-size:11px;
+  }
+  .notice-box{
+    background:#fdf3e3;border:1.5px solid var(--accent-soft);
+    border-radius:12px;padding:16px;font-size:14px;
+  }
+  .notice-box p{margin:0 0 10px;}
+  .notice-box button{
+    background:var(--accent);color:#fff;border:none;border-radius:999px;
+    padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;
+  }
+  .loading{
+    text-align:center;padding:28px 0;color:var(--ink-soft);font-size:14px;
+  }
+  .loading .spin{
+    display:inline-block;font-size:26px;
+    animation:sway 1.2s ease-in-out infinite;
+  }
+  @keyframes sway{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+  .error-box{
+    background:#fbeae6;border:1.5px solid #d99;
+    border-radius:12px;padding:14px 16px;font-size:13px;color:#7c2d1e;
+  }
+
+  /* 日記帳 */
+  #bookArea{margin-top:30px;}
+  .book-head{display:flex;justify-content:space-between;align-items:center;}
+  #clearBookBtn{
+    background:none;border:1px solid var(--line);border-radius:999px;
+    font-size:11px;color:var(--ink-soft);padding:3px 10px;cursor:pointer;
+  }
+  .book-empty{
+    text-align:center;color:var(--ink-soft);font-size:13px;
+    padding:18px 0;border:1.5px dashed var(--line);border-radius:12px;
+    background:rgba(255,253,246,.5);
+  }
+  .book-entry{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:12px 14px;margin-top:10px;box-shadow:var(--shadow);
+    cursor:pointer;position:relative;
+  }
+  .book-entry .b-top{display:flex;align-items:center;gap:8px;}
+  .book-entry .b-emoji{font-size:20px;}
+  .book-entry .b-subject{font-weight:700;font-size:14px;}
+  .book-entry .b-date{font-size:11px;color:var(--ink-soft);margin-left:auto;}
+  .book-entry .b-snippet{
+    font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+    font-size:13px;color:var(--ink-soft);margin-top:4px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .book-entry .b-del{
+    position:absolute;top:8px;right:8px;
+    background:none;border:none;color:#b9a888;font-size:15px;cursor:pointer;
+    padding:2px 6px;line-height:1;
+  }
+  .book-entry .b-hasimg{font-size:11px;color:var(--ink-soft);}
+
+  footer{
+    margin-top:36px;text-align:center;
+    font-size:11px;color:var(--ink-soft);line-height:1.9;
+  }
+
+  /* 設定モーダル */
+  #settingsModal{
+    display:none;position:fixed;inset:0;z-index:50;
+    background:rgba(40,30,10,.5);
+    align-items:flex-end;justify-content:center;
+  }
+  #settingsModal.open{display:flex;}
+  .modal-sheet{
+    background:var(--card);width:100%;max-width:560px;
+    border-radius:18px 18px 0 0;padding:22px 20px 30px;
+    max-height:86vh;overflow-y:auto;
+  }
+  .modal-sheet h3{margin:0 0 6px;font-size:16px;}
+  .modal-sheet p{font-size:12.5px;color:var(--ink-soft);margin:6px 0;}
+  #apiKeyInput{
+    width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;
+    font-size:14px;margin-top:8px;background:#fff;
+  }
+  .modal-btns{display:flex;gap:10px;margin-top:14px;}
+  .modal-btns button{
+    flex:1;padding:12px;border-radius:999px;font-size:14px;font-weight:700;cursor:pointer;
+  }
+  #saveKeyBtn{background:var(--accent);color:#fff;border:none;}
+  #clearKeyBtn{background:#fff;color:var(--accent);border:1.5px solid var(--accent);}
+  #closeSettingsBtn{
+    width:100%;margin-top:10px;padding:10px;background:none;border:none;
+    color:var(--ink-soft);font-size:13px;cursor:pointer;
+  }
+  #keyState{font-size:12px;margin-top:8px;color:#4c9a52;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <button id="settingsBtn" aria-label="設定">⚙️</button>
+    <h1>なんでも日記</h1>
+    <div class="tagline">写真をあげると、その「もの」の視点で<br>そのものの一日の日記が生まれます</div>
+    <span class="proto-badge">プロトタイプ／デモ</span>
+    <div class="mode-line" id="modeLine"><span class="dot"></span><span id="modeText">デモモードで動作中</span></div>
+  </header>
+
+  <section>
+    <h2><span class="num">1</span>写真をえらぶ</h2>
+    <p class="hint">内蔵の題材から選ぶか、自分の写真をアップロードしてください。</p>
+    <div class="sample-grid" id="sampleGrid"></div>
+
+    <div class="upload-box" id="uploadBox">
+      <div class="u-emoji">📷</div>
+      <div class="u-text" id="uploadText">自分の写真をアップロード</div>
+      <img id="previewImg" alt="アップロードした写真のプレビュー">
+    </div>
+    <input type="file" id="fileInput" accept="image/*">
+  </section>
+
+  <button id="writeBtn" disabled>日記を書く ✎</button>
+
+  <section id="resultArea">
+    <h2><span class="num">2</span>今日の日記</h2>
+    <div id="resultContent"></div>
+  </section>
+
+  <section id="bookArea">
+    <div class="book-head">
+      <h2><span class="num">3</span>ものの日記帳</h2>
+      <button id="clearBookBtn">全部消す</button>
+    </div>
+    <div id="bookList"></div>
+  </section>
+
+  <footer>
+    『なんでも日記』プロトタイプ ― Google AI Challenge 応募作のデモです<br>
+    日記はこの端末の中（localStorage）にだけ保存されます
+  </footer>
+</div>
+
+<!-- 設定モーダル -->
+<div id="settingsModal">
+  <div class="modal-sheet">
+    <h3>⚙️ 設定 ― Gemini APIキー</h3>
+    <p>本番モードでは、アップロードした写真を Gemini API に送って日記を生成します。APIキーはこの端末のブラウザ内（localStorage）にだけ保存され、画面には表示されません。</p>
+    <p>キーが未設定のあいだはデモモードです。デモモードでは、内蔵題材のサンプル日記を表示します（写真アップロードの日記生成には本番モードが必要です）。</p>
+    <input type="password" id="apiKeyInput" placeholder="Gemini APIキーを入力" autocomplete="off">
+    <div id="keyState"></div>
+    <div class="modal-btns">
+      <button id="saveKeyBtn">保存する</button>
+      <button id="clearKeyBtn">キーを削除</button>
+    </div>
+    <button id="closeSettingsBtn">閉じる</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===== 定数 ===== */
+var LS_KEY_API = "nandemo_gemini_key";
+var LS_KEY_BOOK = "nandemo_diary_book";
+var GEMINI_MODEL = "gemini-4-argon";
+var GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent";
+
+/* ===== 内蔵サンプル（試作ファイル収録の日記） ===== */
+var SAMPLES = [
+{
+id:"bench", name:"駅のベンチ", sub:"収録サンプル", emoji:"🪑",
+diary:"午前中、左端の席に置かれた紙袋の底がほんの少し湿っていて、今もまだその冷たさが板目に残っている。昼過ぎには三人組が座ったが、真ん中の人だけずっと靴先を浮かせていたので、私の脚には二人分の重さしかかからなかった。夕方のラッシュ時、急いで立った誰かが、私の背もたれに緑色の定期券を押し当てたまま走り去った。結局、落とさずに持ち帰れたのだろうか。夜になって風が冷えてきたが、右から二番目のネジが昨日より半回転ほど緩んでいる気がする。明日の始発までに誰か気づいて締め直してくれるだろうか。"
+},
+{
+id:"glove", name:"片方の手袋", sub:"収録サンプル", emoji:"🧤",
+diary:"朝八時過ぎ、ポケットから滑り落ちて以来、アスファルトの隙間から空ばかり見ている。昼前に一度だけ拾い上げられ、ガードレールの支柱の上に移動させられた。視界は広くなったが、風当たりが急に強くなって親指の先がすっかり乾いてしまった。夕方、よく似た黒いコートの裾がすぐ横を通り過ぎたけれど、私の相方はもう右のポケットの奥底に引っ込んでいたのか、気配すらなかった。明日の朝、もし雨が降ったら、この鉄パイプの上で私はどこまで水を吸って重くなるのだろう。それまでに相方が迎えに来る気配はまだない。"
+},
+{
+id:"pudding", name:"冷蔵庫のプリン", sub:"収録サンプル", emoji:"🍮",
+diary:"手前にいた牛乳パックが今朝ついにいなくなり、三日ぶりに扉が開くたびの白い光を正面から浴びた。ただ、午後になって新しく入ってきたキャベツが予想以上に大きく、私は再び左奥の冷気吹き出し口のすぐ下へ押し込まれた。おかげでプラスチックの蓋の真ん中に、さっきから小さな水滴が二つ並んでついている。夜十時、扉が開いて長い影が伸びてきたが、指先は手前のヨーグルトを掴んで去っていった。私の賞味期限の印字は明後日だが、このキャベツの葉がもう少ししなれてくれないと、明日も私は見えないままだ。"
+},
+{
+id:"sky", name:"夕方の空", sub:"収録サンプル", emoji:"🌇",
+diary:"午後四時を回ったあたりで、西側のビル群の隙間からオレンジ色の光をだいぶ強く流し込んだ。飛行機雲が一本、私の真ん中を斜めに横切っていったが、上空の風が意外と速くて、五分も経たないうちに端からちぎれて薄くなった。五時過ぎには東の端から順番に群青色を混ぜ始めたのに、駅前の交差点の上だけ、ネオンの反射でずっと白っぽく濁っている。カラスが四羽、いつもより低い位置を鳴きながら通過していった。明日の朝は南から少し湿った雲が張り出してくる予定だけれど、あのカラスたちはどこで雨宿りをするつもりだろう。"
+},
+{
+id:"plant", name:"自販機横の植木鉢", sub:"収録サンプル", emoji:"🪴",
+diary:"隣にいる自動販売機の排熱が今日も一日中あたたかくて、私の左半分の土だけやけに早く乾いてしまった。昼休みの時間、缶コーヒーを買った人の小銭がチャリンと跳ねて、私の縁に当たってから側溝の網のすぐ横に転がった。拾い上げるのに三分くらいかかっていたから、その間ずっと黒い革靴の踵が私の側面に密着していた。夕方、通り雨のしずくが葉っぱの先に三粒だけ乗ったけれど、根元まで潤うには全然足りない。明日は金曜日で補充のトラックが来る日だが、作業のお兄さんがついでに私に水をくれる確率はどれくらいだろう。"
+}
+];
+
+/* ===== 本番モード用プロンプト（生成ルールを組み込む） ===== */
+var DIARY_PROMPT = [
+"あなたは『なんでも日記』の書き手です。添付された写真に写っている主な「もの」を1つ選び、そのものの一人称で、そのものの一日の日記を書いてください。",
+"",
+"【出力形式】",
+"1行目に「【ものの名前】」の形で、そのものの名前だけを書いてください。",
+"2行目以降に日記の本文を書いてください。それ以外の説明や前置きは書かないでください。",
+"",
+"【日記のルール】",
+"・本文は150〜250字の短編日記にすること",
+"・一人称は対象の質感に合わせて自然に選ぶこと（俺、私、ぼく、わたくし等）",
+"・写真から読み取れる視覚的根拠（傷、汚れ、光の当たり方、影の長さ、周囲の配置、歪み、水滴など）だけを出発点にすること",
+"・「今日起きた具体的な出来事（時刻や回数などのディテール）」から入り、「周囲の観察」を経て、「小さな未解決の出来事・明日へのささやかな気がかり」で終えること",
+"・物理的な感覚（重さ、温度、湿気、振動、光、風）を、その物ならではの重大ニュースとして真剣に書くこと。「AIが知るはずのないその物の今日」を1ミリもふざけず、大真面目に記述すること",
+"・すれ違った人間や他の物体との、一方的で噛み合わない関係性を真剣に記録してよい",
+"・説教や教訓で締めないこと（「物を大切にしよう」「小さな幸せに気づこう」等のイイ話・ポエム・道徳的まとめは禁止）",
+"・実在の個人の特定や、人の内面の断定をしないこと（「ため息が3回落ちた」「歩幅が昨日より狭かった」等の事実ベースの観察にとどめること）"
+].join("\n");
+
+/* ===== 状態 ===== */
+var state = {
+mode: null, // "sample" | "upload"
+sampleId: null,
+uploadDataUrl: null, // 元画像の data URL
+uploadMime: null
+};
+
+/* ===== DOM ===== */
+var sampleGrid = document.getElementById("sampleGrid");
+var uploadBox = document.getElementById("uploadBox");
+var uploadText = document.getElementById("uploadText");
+var previewImg = document.getElementById("previewImg");
+var fileInput = document.getElementById("fileInput");
+var writeBtn = document.getElementById("writeBtn");
+var resultArea = document.getElementById("resultArea");
+var resultContent= document.getElementById("resultContent");
+var bookList = document.getElementById("bookList");
+var clearBookBtn = document.getElementById("clearBookBtn");
+var settingsBtn = document.getElementById("settingsBtn");
+var settingsModal= document.getElementById("settingsModal");
+var apiKeyInput = document.getElementById("apiKeyInput");
+var keyState = document.getElementById("keyState");
+var saveKeyBtn = document.getElementById("saveKeyBtn");
+var clearKeyBtn = document.getElementById("clearKeyBtn");
+var closeSettingsBtn = document.getElementById("closeSettingsBtn");
+var modeLine = document.getElementById("modeLine");
+var modeText = document.getElementById("modeText");
+
+/* ===== ユーティリティ ===== */
+function lsGet(k){ try { return localStorage.getItem(k);} catch(e){ return null;}}
+function lsSet(k,v){ try { localStorage.setItem(k,v);} catch(e){}}
+function lsDel(k){ try { localStorage.removeItem(k);} catch(e){}}
+function getApiKey(){ return lsGet(LS_KEY_API) || "";}
+
+function getBook(){
+try {
+var raw = lsGet(LS_KEY_BOOK);
+var arr = raw? JSON.parse(raw): [];
+return Object.prototype.toString.call(arr) === "[object Array]"? arr: [];
+} catch(e){ return [];}
+}
+function saveBook(arr){ lsSet(LS_KEY_BOOK, JSON.stringify(arr));}
+
+function pad(n){ return (n < 10? "0": "") + n;}
+function todayStr(){
+var d = new Date();
+return d.getFullYear() + "年" + (d.getMonth()+1) + "月" + d.getDate() + "日";
+}
+function newId(){ return "e" + Date.now().toString(36) + Math.floor(Math.random()*100000);}
+
+function escapeHtml(s){
+return String(s)
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#39;");
+}
+
+function findSample(id){
+for (var i=0;i<SAMPLES.length;i++){ if (SAMPLES[i].id === id) return SAMPLES[i];}
+return null;
+}
+
+/* ===== モード表示 ===== */
+function refreshMode(){
+if (getApiKey()){
+modeLine.classList.add("live");
+modeText.textContent = "本番モード（Gemini API接続）で動作中";
+} else {
+modeLine.classList.remove("live");
+modeText.textContent = "デモモードで動作中（題材のサンプル日記を表示します）";
+}
+}
+
+/* ===== 題材カード ===== */
+function renderSamples(){
+var html = "";
+for (var i=0;i<SAMPLES.length;i++){
+var s = SAMPLES[i];
+html += '<div class="sample-card" data-id="' + s.id + '">'
++ '<span class="emoji">' + s.emoji + '</span>'
++ '<div class="sname">' + escapeHtml(s.name) + '</div>'
++ '<div class="ssub">' + escapeHtml(s.sub) + '</div>'
++ '</div>';
+}
+sampleGrid.innerHTML = html;
+var cards = sampleGrid.querySelectorAll(".sample-card");
+for (var j=0;j<cards.length;j++){
+cards[j].addEventListener("click", function(){
+selectSample(this.getAttribute("data-id"));
+});
+}
+}
+function markSelectedCards(){
+var cards = sampleGrid.querySelectorAll(".sample-card");
+for (var i=0;i<cards.length;i++){
+if (state.mode === "sample" && cards[i].getAttribute("data-id") === state.sampleId){
+cards[i].classList.add("selected");
+} else {
+cards[i].classList.remove("selected");
+}
+}
+if (state.mode === "upload"){ uploadBox.classList.add("selected");}
+else { uploadBox.classList.remove("selected");}
+}
+function selectSample(id){
+state.mode = "sample";
+state.sampleId = id;
+markSelectedCards();
+writeBtn.disabled = false;
+}
+
+/* ===== アップロード ===== */
+uploadBox.addEventListener("click", function(){ fileInput.click();});
+fileInput.addEventListener("change", function(){
+var file = fileInput.files && fileInput.files[0];
+if (!file) return;
+if (file.type.indexOf("image/")!== 0){
+alert("画像ファイルを選んでください。");
+return;
+}
+var reader = new FileReader();
+reader.onload = function(){
+state.mode = "upload";
+state.sampleId = null;
+state.uploadDataUrl = String(reader.result);
+state.uploadMime = file.type || "image/jpeg";
+previewImg.src = state.uploadDataUrl;
+previewImg.style.display = "block";
+uploadText.textContent = "自分の写真（選択中）";
+markSelectedCards();
+writeBtn.disabled = false;
+};
+reader.onerror = function(){ alert("写真の読み込みに失敗しました。");};
+reader.readAsDataURL(file);
+});
+
+/* 画像を最大寸法に縮小して JPEG data URL を返す */
+function resizeImage(dataUrl, maxDim, quality, callback){
+var img = new Image();
+img.onload = function(){
+var w = img.naturalWidth, h = img.naturalHeight;
+var scale = Math.min(1, maxDim / Math.max(w, h));
+var cw = Math.max(1, Math.round(w * scale));
+var ch = Math.max(1, Math.round(h * scale));
+var canvas = document.createElement("canvas");
+canvas.width = cw; canvas.height = ch;
+var ctx = canvas.getContext("2d");
+ctx.drawImage(img, 0, 0, cw, ch);
+try { callback(canvas.toDataURL("image/jpeg", quality));}
+catch(e){ callback(null);}
+};
+img.onerror = function(){ callback(null);};
+img.src = dataUrl;
+}
+
+/* ===== 結果表示 ===== */
+function showResult(html){
+resultArea.style.display = "block";
+resultContent.innerHTML = html;
+resultArea.scrollIntoView({ behavior:"smooth", block:"start"});
+}
+function sourceTagText(source){
+return source === "generated"? "Gemini生成（本番モード）": "収録サンプル（デモ）";
+}
+function diaryPaperHtml(entry){
+var imgHtml = "";
+if (entry.thumb){
+imgHtml = '<img src="' + entry.thumb + '" alt="" style="display:block;max-width:100%;max-height:180px;border-radius:8px;margin:0 auto 12px;">';
+}
+return '<div class="diary-paper">'
++ imgHtml
++ '<div class="diary-meta"><span class="diary-subject">'
++ (entry.emoji? entry.emoji + " ": "") + escapeHtml(entry.subject)
++ '</span><span class="diary-date">' + escapeHtml(entry.date) + '</span></div>'
++ '<p id="diaryText">' + escapeHtml(entry.text) + '</p>'
++ '<div class="diary-foot"><span class="source-tag">' + sourceTagText(entry.source) + '</span>'
++ '<span>' + entry.text.length + '字</span></div>'
++ '</div>';
+}
+
+/* ===== 日記帳 ===== */
+function addToBook(entry){
+var book = getBook();
+for (var i=0;i<book.length;i++){
+if (book[i].text === entry.text && book[i].subject === entry.subject){
+return false; // 同じ日記は二重に貯めない
+}
+}
+book.unshift(entry);
+saveBook(book);
+renderBook();
+return true;
+}
+function renderBook(){
+var book = getBook();
+clearBookBtn.style.display = book.length? "": "none";
+if (!book.length){
+bookList.innerHTML = '<div class="book-empty">まだ日記がありません。<br>写真を選んで「日記を書く」を押してみてください。</div>';
+return;
+}
+var html = "";
+for (var i=0;i<book.length;i++){
+var e = book[i];
+var snippet = e.text.length > 60? e.text.slice(0,60) + "…": e.text;
+html += '<div class="book-entry" data-id="' + e.id + '">'
++ '<button class="b-del" data-del="' + e.id + '" aria-label="削除">×</button>'
++ '<div class="b-top"><span class="b-emoji">' + (e.emoji || "📖") + '</span>'
++ '<span class="b-subject">' + escapeHtml(e.subject) + '</span>'
++ '<span class="b-date">' + escapeHtml(e.date) + '</span></div>'
++ '<div class="b-snippet">' + escapeHtml(snippet) + '</div>'
++ (e.thumb? '<div class="b-hasimg">📷 写真つき</div>': '')
++ '</div>';
+}
+bookList.innerHTML = html;
+
+var entries = bookList.querySelectorAll(".book-entry");
+for (var j=0;j<entries.length;j++){
+entries[j].addEventListener("click", function(){
+var id = this.getAttribute("data-id");
+var b = getBook();
+for (var k=0;k<b.length;k++){
+if (b[k].id === id){ showResult(diaryPaperHtml(b[k])); break;}
+}
+});
+}
+var dels = bookList.querySelectorAll("[data-del]");
+for (var m=0;m<dels.length;m++){
+dels[m].addEventListener("click", function(ev){
+ev.stopPropagation();
+var id = this.getAttribute("data-del");
+var b = getBook().filter(function(x){ return x.id!== id;});
+saveBook(b);
+renderBook();
+});
+}
+}
+clearBookBtn.addEventListener("click", function(){
+if (!getBook().length) return;
+if (confirm("日記帳の日記を全部消しますか？")){
+saveBook([]);
+renderBook();
+}
+});
+
+/* ===== 日記を書く ===== */
+writeBtn.addEventListener("click", function(){
+if (state.mode === "sample"){
+var s = findSample(state.sampleId);
+if (!s) return;
+var entry = {
+id: newId(), subject: s.name, emoji: s.emoji,
+date: todayStr(), text: s.diary, source: "sample", thumb: null
+};
+showResult(diaryPaperHtml(entry));
+addToBook(entry);
+return;
+}
+if (state.mode === "upload"){
+if (!getApiKey()){
+showResult(
+'<div class="notice-box">'
++ '<p>📷 この写真の日記を書くには、<strong>本番モード（Gemini APIキー）</strong>が必要です。</p>'
++ '<p>設定からAPIキーを入力すると、この写真を Gemini に送って、その「もの」の視点の日記を生成できます。</p>'
++ '<button id="openSettingsFromNotice" type="button">⚙️ 設定を開く</button>'
++ '</div>'
+);
+var b = document.getElementById("openSettingsFromNotice");
+if (b){ b.addEventListener("click", openSettings);}
+return;
+}
+generateFromPhoto();
+}
+});
+
+/* ===== Gemini 生成 ===== */
+function generateFromPhoto(){
+showResult('<div class="loading"><span class="spin">✎</span><br>ものが今日を思い出しています…</div>');
+writeBtn.disabled = true;
+
+resizeImage(state.uploadDataUrl, 1568, 0.85, function(apiDataUrl){
+var sendUrl = apiDataUrl || state.uploadDataUrl;
+var mime = apiDataUrl? "image/jpeg": (state.uploadMime || "image/jpeg");
+var base64 = String(sendUrl).split(",")[1] || "";
+
+var body = {
+contents: [{
+parts: [
+{ text: DIARY_PROMPT},
+{ inline_data: { mime_type: mime, data: base64}}
+]
+}]
+};
+
+fetch(GEMINI_ENDPOINT, {
+method: "POST",
+headers: {
+"Content-Type": "application/json",
+"x-goog-api-key": getApiKey()
+},
+body: JSON.stringify(body)
+})
+.then(function(res){
+return res.json().then(function(j){ return { ok: res.ok, json: j};});
+})
+.then(function(r){
+if (!r.ok){
+var msg = (r.json && r.json.error && r.json.error.message) || "APIエラーが発生しました";
+throw new Error(msg);
+}
+var parts = [];
+try {
+parts = r.json.candidates[0].content.parts || [];
+} catch(e){ parts = [];}
+var raw = "";
+for (var i=0;i<parts.length;i++){ if (parts[i].text) raw += parts[i].text;}
+raw = raw.trim();
+if (!raw) throw new Error("日記が生成されませんでした。もう一度お試しください。");
+
+// 1行目の「ものの名前」を分離する
+var subject = "写真のもの";
+var text = raw;
+var lines = raw.split("\n");
+var m = lines[0].match(/【(.+?)】/);
+if (m){
+subject = m[1].trim();
+text = lines.slice(1).join("\n").trim() || raw;
+}
+
+resizeImage(state.uploadDataUrl, 360, 0.7, function(thumb){
+var entry = {
+id: newId(), subject: subject, emoji: "📷",
+date: todayStr(), text: text, source: "generated",
+thumb: thumb || null
+};
+showResult(diaryPaperHtml(entry));
+addToBook(entry);
+writeBtn.disabled = false;
+});
+})
+.catch(function(err){
+showResult(
+'<div class="error-box">⚠️ 日記を生成できませんでした。<br>'
++ escapeHtml(err && err.message? err.message: "通信エラーが発生しました")
++ '<br>APIキーが正しいか、通信環境を確認してもう一度お試しください。</div>'
+);
+writeBtn.disabled = false;
+});
+});
+}
+
+/* ===== 設定モーダル ===== */
+function openSettings(){
+apiKeyInput.value = "";
+apiKeyInput.placeholder = getApiKey()? "設定済み（変更する場合のみ入力）": "Gemini APIキーを入力";
+keyState.textContent = getApiKey()? "✓ キーが設定されています（本番モード）": "";
+settingsModal.classList.add("open");
+}
+function closeSettings(){ settingsModal.classList.remove("open");}
+settingsBtn.addEventListener("click", openSettings);
+closeSettingsBtn.addEventListener("click", closeSettings);
+settingsModal.addEventListener("click", function(e){
+if (e.target === settingsModal) closeSettings();
+});
+saveKeyBtn.addEventListener("click", function(){
+var v = apiKeyInput.value.trim();
+if (v){
+lsSet(LS_KEY_API, v);
+keyState.textContent = "✓ キーを保存しました（本番モード）";
+apiKeyInput.value = "";
+} else if (getApiKey()){
+keyState.textContent = "✓ 既存のキーを保持しています";
+} else {
+keyState.textContent = "キーが入力されていません";
+}
+refreshMode();
+});
+clearKeyBtn.addEventListener("click", function(){
+lsDel(LS_KEY_API);
+apiKeyInput.value = "";
+apiKeyInput.placeholder = "Gemini APIキーを入力";
+keyState.textContent = "キーを削除しました（デモモード）";
+refreshMode();
+});
+
+/* ===== 初期化 ===== */
+renderSamples();
+renderBook();
+refreshMode();
+})();
+</script>
+</body>
+</html>
